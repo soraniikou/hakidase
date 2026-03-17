@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>hakidase</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Zen+Kurenaido&family=Share+Tech+Mono&family=Dancing+Script:wght@600&family=Noto+Serif+JP:wght@200;300&display=swap');
+
+  :root {
+    --black: #050508;
+    --deep: #0a0a14;
+    --mid: #12121e;
+    --accent1: #ff6b35;
+    --accent2: #4ecdc4;
+    --accent3: #ffe66d;
+    --accent4: #a855f7;
+    --accent5: #ec4899;
+    --accent6: #22d3ee;
+    --text: #e8e8f0;
+    --glitch: #ff0040;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--black);
+    color: var(--text);
+    font-family: 'Zen Kurenaido', sans-serif;
+    min-height: 100vh;
+    overflow: hidden;
+    cursor: crosshair;
+    touch-action: manipulation;
+  }
+
+  canvas#bg {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: -1;
+  }
+
+  .app {
+    position: relative;
+    z-index: 10;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    pointer-events: none;
+  }
+  .app * { pointer-events: auto; }
+
+  .tap-healing-zone {
+    position: fixed;
+    inset: 0;
+    z-index: 5;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+
+  /* release後に非表示 */
+  body.post-release .ai-response {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.6s ease;
+  }
+
+  /* タイトル（画面最下部・グラウンディング要素） */
+  .title-wrap {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 20;
+    transition: opacity 0.6s ease;
+  }
+
+  h1 {
+    font-size: clamp(0.85rem, 2.2vw, 1.1rem);
+    font-family: 'Zen Kurenaido', 'Noto Serif JP', serif;
+    font-weight: 200;
+    letter-spacing: 0.2em;
+    color: rgba(255,255,255,0.55);
+    text-align: center;
+  }
+
+  h1::before, h1::after { display: none; }
+
+  .subtitle {
+    position: fixed;
+    top: 18%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.35rem;
+    letter-spacing: 0.4em;
+    color: rgba(255,255,255,0.2);
+    text-align: center;
+    z-index: 20;
+  }
+
+  /* INPUT（入力ごとに位置移動） */
+  .input-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    max-width: 560px;
+    position: fixed;
+    z-index: 50;
+    transition: top 0.4s, left 0.4s, right 0.4s, bottom 0.4s, transform 0.4s;
+  }
+  .input-with-arrow {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
+    gap: 10px;
+  }
+  .input-arrow {
+    color: rgba(200,230,255,0.85);
+    font-size: 1.3rem;
+    flex-shrink: 0;
+    text-shadow: 0 0 14px rgba(180,220,255,0.5);
+    line-height: 1;
+  }
+  .input-row.pos-center { top: 50%; left: 50%; right: auto; bottom: auto; transform: translate(-50%, calc(-50% - 100px)); }
+  .input-row.pos-top { top: 40px; left: 50%; right: auto; bottom: auto; transform: translateX(-50%); }
+  .input-row.pos-top-right { top: 40px; right: 24px; left: auto; bottom: auto; transform: none; }
+  .input-row.pos-left { top: calc(50% - 100px); left: 24px; right: auto; bottom: auto; transform: translateY(-50%); }
+  .input-row.pos-right { top: calc(50% - 100px); right: 24px; left: auto; bottom: auto; transform: translateY(-50%); }
+  .input-row.pos-bottom-left { bottom: 100px; left: 24px; top: auto; right: auto; transform: none; }
+  .input-row.pos-bottom-right { bottom: 100px; right: 24px; top: auto; left: auto; transform: none; }
+  .input-row.pos-bottom { bottom: 100px; left: 50%; right: auto; top: auto; transform: translateX(-50%); }
+  .input-row.pos-top-left { top: 40px; left: 24px; right: auto; bottom: auto; transform: none; }
+  .input-row.pos-mid-left { top: calc(35% - 80px); left: 24px; right: auto; bottom: auto; transform: translateY(-50%); }
+  .input-row.pos-mid-right { top: calc(65% - 80px); right: 24px; left: auto; bottom: auto; transform: translateY(-50%); }
+
+  textarea {
+    flex: 1;
+    min-width: 0;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: var(--text);
+    font-family: 'Zen Kurenaido', sans-serif;
+    font-size: 1rem;
+    padding: 10px 14px;
+    resize: none;
+    height: 52px;
+    line-height: 1.4;
+    outline: none;
+    transition: border-color 0.3s;
+    backdrop-filter: blur(4px);
+    overflow: hidden;
+  }
+  textarea::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }
+  textarea::-webkit-scrollbar-track { display: none !important; }
+  textarea::-webkit-scrollbar-thumb { display: none !important; }
+  textarea::-webkit-scrollbar-corner { display: none !important; }
+  textarea { -ms-overflow-style: none; scrollbar-width: none; }
+  textarea:focus { border-color: rgba(255,255,255,0.3); }
+  textarea::placeholder { color: rgba(200,200,220,0.65); }
+
+  .fire-btn {
+    padding: 0 16px;
+    width: 100px;
+    min-width: 100px;
+    height: 100px;
+    border: none;
+    font-family: 'Dancing Script', cursive;
+    font-size: 1.2rem;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s;
+    white-space: nowrap;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+  }
+  .fire-btn .btn-mark { font-size: 1.6em; display: inline-flex; align-items: center; justify-content: center; }
+  .fire-btn .btn-mark img { width: 1.2em; height: 1.2em; object-fit: contain; }
+  .fire-btn:hover { transform: scale(1.04); }
+  .fire-btn:active { transform: scale(0.97); }
+  .fire-btn.style-1 { background: #7c3aed; color: #fff; clip-path: polygon(50% 0%, 100% 100%, 0 100%); }
+  .fire-btn.style-2 { background: #ffc0cb; color: #fff; clip-path: path('M 50 8 C 50 8 8 25 8 45 C 8 62 28 78 50 68 C 72 78 92 62 92 45 C 92 25 50 8 50 8 Z'); }
+  .fire-btn.style-3 { background: #fef9c3; color: #1a1a1a; clip-path: path('M 50 4 C 72 28 100 38 80 62 C 80 78 50 92 50 92 C 50 92 20 78 20 62 C 0 38 28 28 50 4 Z'); }
+  .fire-btn.style-4 { background: #84cc16; color: #1a1a1a; clip-path: path('M 50 4 C 62 22 88 22 72 42 C 58 58 50 92 50 92 C 50 92 42 58 28 42 C 12 22 38 22 50 4 Z'); }
+  .fire-btn.style-5 { background: linear-gradient(135deg, #22d3ee 0%, #06b6d4 50%, #0ea5e9 100%); color: #fff; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); box-shadow: 0 0 12px rgba(34,211,238,0.5); }
+  .fire-btn.style-6 { background: linear-gradient(135deg, #fde047 0%, #fbbf24 50%, #f59e0b 100%); color: #fef9c3; clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); box-shadow: 0 0 10px rgba(251,191,36,0.4); }
+  .fire-btn.style-7 { background: #fce7f3; color: #831843; clip-path: polygon(50% 0%, 95% 35%, 80% 100%, 50% 65%, 20% 100%, 5% 35%); }
+  .fire-btn.style-8 { background: linear-gradient(135deg, #0ea5e9 0%, #3b82f6 50%, #6366f1 100%); color: #fff; clip-path: circle(50% at 50% 50%); box-shadow: 0 0 12px rgba(59,130,246,0.5); }
+  .fire-btn.style-9 { background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 50%, #a5b4fc 100%); color: #4338ca; clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0 50%); box-shadow: 0 0 10px rgba(165,180,252,0.4); }
+  .fire-btn.style-10 { background: linear-gradient(135deg, #f472b6 0%, #816057 50%, #fde047 100%); color: #fff; clip-path: path('M 50 5 C 80 20 95 50 80 80 C 65 95 50 85 50 85 C 50 85 35 95 20 80 C 5 50 20 20 50 5 Z'); box-shadow: 0 0 12px rgba(129,96,87,0.4); }
+
+  .goddess-img {
+    height: 112px;
+    width: auto;
+    object-fit: contain;
+    pointer-events: none;
+  }
+
+  /* AI RESPONSE */
+  .ai-response {
+    position: fixed;
+    bottom: 64px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 560px;
+    padding: 0 20px;
+    min-height: 80px;
+    transition: opacity 0.6s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .ai-text {
+    font-size: 1.05rem;
+    line-height: 1.9;
+    letter-spacing: 0.08em;
+    color: rgba(255,255,255,0.75);
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.8s, transform 0.8s;
+    font-style: italic;
+  }
+  .ai-text.show { opacity: 1; transform: translateY(0); }
+
+  .loading-dots {
+    display: none;
+    gap: 8px;
+  }
+  .loading-dots.show { display: flex; }
+  .loading-dots span {
+    width: 6px; height: 6px;
+    background: rgba(255,255,255,0.4);
+    border-radius: 50%;
+    animation: dotPulse 1.2s infinite;
+  }
+  .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes dotPulse {
+    0%,80%,100% { transform: scale(0.6); opacity: 0.3; }
+    40% { transform: scale(1); opacity: 1; }
+  }
+
+  /* VIDEO OVERLAY */
+  .video-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.95);
+    z-index: 500;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+  .video-overlay.show {
+    display: flex;
+  }
+  .video-overlay video {
+    max-width: 95vw;
+    max-height: 95vh;
+    object-fit: contain;
+  }
+  .video-overlay video::-webkit-media-controls,
+  .video-overlay video::-webkit-media-controls-panel,
+  .video-overlay video::-webkit-media-controls-play-button,
+  .video-overlay video::-webkit-media-controls-start-playback-button {
+    display: none !important;
+  }
+  .video-overlay .close-hint {
+    position: absolute;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.75rem;
+    color: rgba(255,255,255,0.5);
+    letter-spacing: 0.2em;
+  }
+
+  /* 文字バラバラ飛散オーバーレイ */
+  .burst-overlay {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 150;
+  }
+  .burst-char {
+    position: fixed;
+    font-family: 'Zen Kurenaido', sans-serif;
+    font-size: 5rem;
+    font-weight: bold;
+    color: var(--text);
+    white-space: nowrap;
+    will-change: transform, opacity;
+    text-shadow: 0 0 12px rgba(255,255,255,0.6);
+  }
+
+  /* SCAN LINE */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.03) 2px,
+      rgba(0,0,0,0.03) 4px
+    );
+    pointer-events: none;
+    z-index: 300;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="bg"></canvas>
+<audio id="messageAudio" preload="none"></audio>
+<div class="tap-healing-zone" id="tapHealingZone"></div>
+<div class="burst-overlay" id="burstOverlay"></div>
+
+<div class="video-overlay" id="videoOverlay" onclick="closeVideo()">
+  <video id="mainVideo" onclick="event.stopPropagation()" playsinline style="object-fit: contain;">
+    <source src="" type="video/mp4">
+  </video>
+  <span class="close-hint">タップで閉じる</span>
+</div>
+
+<div class="app">
+  <div class="title-wrap">
+    <h1>画面をそっと、タップして</h1>
+  </div>
+
+  <div class="subtitle"><span class="subtitle-small">ここに書いてから</span></div>
+
+  <div class="input-row pos-center" id="inputRow">
+    <div class="input-with-arrow">
+      <textarea id="input" placeholder="ここに書いて…"></textarea>
+      <span class="input-arrow">→</span>
+    </div>
+    <button class="fire-btn style-1" id="releaseBtn" onclick="release()"><span class="btn-mark">△</span>release</button>
+    <img src="goddess.png" alt="" class="goddess-img">
+  </div>
+
+  <div class="ai-response">
+    <div class="loading-dots" id="dots">
+      <span></span><span></span><span></span>
+    </div>
+    <p class="ai-text" id="aiText"></p>
+  </div>
+</div>
+
+<script>
+// ── CANVAS BG ──
+const canvas = document.getElementById('bg');
+const ctx = canvas.getContext('2d');
+let W, H, particles = [];
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// 背景△マーク
+const TRI_COLORS = ['#5b21b6', '#6b5a0a', '#3d4d1a', '#0f172a'];
+let triMarks = [];
+for (let i = 0; i < 17; i++) {
+  triMarks.push({
+    x: Math.random() * 2000 - 200,
+    y: Math.random() * 1400 - 200,
+    size: 15 + Math.random() * 80,
+    rot: Math.random() * Math.PI * 2,
+    vr: (Math.random() - 0.5) * 0.008,
+    vx: (Math.random() - 0.5) * 0.15,
+    vy: (Math.random() - 0.5) * 0.12,
+    color: TRI_COLORS[Math.floor(Math.random() * TRI_COLORS.length)],
+    alpha: 0.12 + Math.random() * 0.18
+  });
+}
+
+// Star field
+for (let i = 0; i < 180; i++) {
+  particles.push({
+    x: Math.random() * 1400,
+    y: Math.random() * 900,
+    r: Math.random() * 1.5,
+    alpha: Math.random() * 0.6,
+    twinkle: Math.random() * Math.PI * 2
+  });
+}
+
+// 爆発パーティクル（光の粒子のみ・文字はDOMで処理）
+let textExplosionParticles = [];
+
+// DOM文字バラバラ飛散
+let burstCharSpans = [];
+
+// 夜空へ昇る星（9色・光沢・メッセージと同様にローテーション）
+const STAR_COLORS = [
+  'rgba(255,255,255,1)',           // 1. 白色
+  'rgba(255,220,235,1)',           // 2. 淡いピンク色
+  'rgba(220,180,255,1)',           // 3. 紫色
+  'rgba(80,100,180,1)',            // 4. 紺色
+  'rgba(255,245,200,1)',           // 5. クリーム色
+  'rgba(200,255,150,1)',           // 6. 黄緑
+  'rgba(80,220,180,1)',            // 7. エメラルドグリーン
+  'rgba(255,255,120,1)',           // 8. 黄色
+  'rgba(150,230,255,1)'            // 9. 水色
+];
+let ascendingStars = [];
+
+// 浄化の波紋
+const RIPPLE_COLORS = ['rgba(255,255,255,0.08)', 'rgba(200,180,255,0.06)', 'rgba(255,220,150,0.08)'];
+let ripples = [];
+
+// タップ用音声ファイル（ランダム再生）
+const HEALING_AUDIO_FILES = ['forget.m4a', 'identity.m4a', 'sleepless.m4a', 'siawase.m4a', 'irritation.m4a', 'sky.m4a', 'breath.m4a', 'rest.m4a', 'cry.m4a', 'dream.m4a', 'oyasumi.m4a'];
+
+let starMessageIndex = 0;
+
+// 浄化後の星空の明るさ（リリースごとに蓄積）
+let purificationBrightness = 0;
+
+function drawTriangle(cx, cy, size, rot) {
+  ctx.beginPath();
+  for (let i = 0; i < 3; i++) {
+    const a = rot + (i / 3) * Math.PI * 2 - Math.PI / 2;
+    const x = cx + Math.cos(a) * size;
+    const y = cy + Math.sin(a) * size;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+}
+
+let t = 0;
+
+function loop() {
+  requestAnimationFrame(loop);
+  t += 0.016;
+
+  ctx.fillStyle = 'rgba(5,5,8,0.18)';
+  ctx.fillRect(0, 0, W, H);
+
+  const brightnessBoost = Math.min(0.4, purificationBrightness);
+  const twinkleBoost = purificationBrightness * 0.3;
+  particles.forEach(p => {
+    p.twinkle += 0.02 + twinkleBoost * 0.01;
+    const baseA = p.alpha * (0.5 + (0.5 + twinkleBoost) * Math.sin(p.twinkle));
+    const a = Math.min(1, baseA + brightnessBoost);
+    ctx.beginPath();
+    ctx.arc(p.x % W, p.y % H, p.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255,255,255,${a})`;
+    ctx.fill();
+  });
+
+  triMarks.forEach(tr => {
+    tr.x += tr.vx; tr.y += tr.vy; tr.rot += tr.vr;
+    if (tr.x < -300) tr.x = W + 200;
+    if (tr.x > W + 300) tr.x = -200;
+    if (tr.y < -300) tr.y = H + 200;
+    if (tr.y > H + 300) tr.y = -200;
+    const sx = tr.x, sy = tr.y, s = tr.size;
+    const shadowOff = s * 0.08;
+    ctx.save();
+    ctx.globalAlpha = tr.alpha;
+    drawTriangle(sx + shadowOff, sy + shadowOff, s, tr.rot);
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    drawTriangle(sx, sy, s, tr.rot);
+    const g = ctx.createLinearGradient(sx - s, sy - s, sx + s, sy + s);
+    g.addColorStop(0, tr.color);
+    g.addColorStop(0.4, tr.color);
+    g.addColorStop(0.7, 'rgba(255,255,255,0.15)');
+    g.addColorStop(1, 'rgba(255,255,255,0.05)');
+    ctx.fillStyle = g;
+    ctx.fill();
+    ctx.restore();
+  });
+
+  // 光の粒子（星への移行の橋渡し）
+  textExplosionParticles = textExplosionParticles.filter(p => p.life > 0);
+  textExplosionParticles.forEach(p => {
+    p.x += p.vx; p.y += p.vy;
+    p.vy += p.gravity;
+    p.vx *= 0.99;
+    p.life -= 1;
+    const a = Math.min(1, p.life / 600);
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.beginPath();
+    ctx.arc(0, 0, p.size, 0, Math.PI * 2);
+    ctx.fillStyle = p.color.replace(/[\d.]+\)$/, `${a})`);
+    ctx.shadowColor = p.color;
+    ctx.shadowBlur = 22;
+    ctx.fill();
+    ctx.restore();
+  });
+
+  // DOM文字バラバラ飛散アニメーション
+  burstCharSpans = burstCharSpans.filter(b => {
+    if (b.life <= 0) {
+      if (b.el && b.el.parentNode) b.el.remove();
+      return false;
+    }
+    return true;
+  });
+  burstCharSpans.forEach(b => {
+    b.x += b.vx; b.y += b.vy;
+    b.vy += b.gravity;
+    b.vx *= 0.99;
+    b.rot += b.vRot;
+    b.life -= 1;
+    const a = Math.min(1, b.life / 300);
+    if (b.el && b.el.parentNode) {
+      b.el.style.left = b.x + 'px';
+      b.el.style.top = b.y + 'px';
+      b.el.style.transform = `translate(-50%, -50%) rotate(${b.rot}deg)`;
+      b.el.style.opacity = a;
+    }
+  });
+
+  // 浄化の波紋（円形の光のリングが広がりフェードアウト）
+  ripples = ripples.filter(r => r.life > 0);
+  ripples.forEach(r => {
+    r.radius += r.speed;
+    r.life -= 1;
+    const a = Math.max(0, (r.life / r.maxLife) * 0.15);
+    ctx.save();
+    ctx.strokeStyle = r.color.replace(/[\d.]+\)$/, `${a})`);
+    ctx.lineWidth = 3;
+    ctx.shadowColor = r.color.replace(/[\d.]+\)$/, `${a * 0.8})`);
+    ctx.shadowBlur = 25;
+    ctx.beginPath();
+    ctx.arc(r.cx, r.cy, r.radius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  });
+
+  // 夜空へ昇る星（ゆっくり・揺らぎ・フェードアウト）
+  ascendingStars = ascendingStars.filter(s => s.life > 0);
+  ascendingStars.forEach(s => {
+    s.y += s.vy;
+    s.x += s.vx + Math.sin(t * 1.5 + s.phase) * s.wobble;
+    s.life -= 0.35;
+    const baseAlpha = Math.max(0, (s.life / s.maxLife) * s.initialAlpha);
+    const twinkle = 0.85 + 0.15 * Math.sin(t * 3 + s.phase * 2);
+    const a = baseAlpha * twinkle;
+    ctx.save();
+    ctx.translate(s.x, s.y);
+    ctx.beginPath();
+    ctx.arc(0, 0, s.size, 0, Math.PI * 2);
+    const c = s.color.replace(/[\d.]+\)$/, `${a})`);
+    ctx.fillStyle = c;
+    ctx.shadowColor = c;
+    ctx.shadowBlur = 28;
+    ctx.fill();
+    ctx.restore();
+  });
+}
+loop();
+
+// ── DOM文字バラバラ飛散（入力欄の文字がその場から弾け飛ぶ） ──
+function spawnDomBurst(text, cx, cy) {
+  const overlay = document.getElementById('burstOverlay');
+  overlay.innerHTML = '';
+  const chars = Array.from(text);
+  chars.forEach((char) => {
+    const span = document.createElement('span');
+    span.className = 'burst-char';
+    span.textContent = char;
+    span.style.left = cx + 'px';
+    span.style.top = cy + 'px';
+    span.style.transform = 'translate(-50%, -50%)';
+    span.style.color = `hsl(${180 + Math.random() * 80}, 70%, 78%)`;
+    overlay.appendChild(span);
+
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 2 + Math.random() * 5;
+    burstCharSpans.push({
+      el: span,
+      x: cx, y: cy,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 1.5,
+      rot: (Math.random() - 0.5) * 360,
+      vRot: (Math.random() - 0.5) * 12.5,
+      life: 700 + Math.random() * 200,
+      gravity: 0.06
+    });
+  });
+}
+
+// ── 光の粒子（星への移行の橋渡し・9色ローテーション） ──
+function spawnLightParticles(cx, cy, colorIndex) {
+  const idx = (colorIndex != null ? colorIndex : 0) % STAR_COLORS.length;
+  const baseColor = STAR_COLORS[idx];
+  for (let i = 0; i < 50; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 1 + Math.random() * 4;
+    textExplosionParticles.push({
+      x: cx, y: cy,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 1,
+      size: 2 + Math.random() * 4,
+      life: 600 + Math.random() * 60,
+      color: baseColor,
+      rot: Math.random() * Math.PI * 2,
+      gravity: 0.01
+    });
+  }
+}
+
+// ── 浄化の波紋（中心から円形の光のリングが20秒かけてゆっくり広がる・サイズ半分） ──
+function spawnRipples(cx, cy) {
+  const count = 5;
+  const maxR = Math.max(W, H) * 0.6;
+  const durationFrames = 2400;
+  const speedPerFrame = maxR / durationFrames;
+  for (let i = 0; i < count; i++) {
+    const color = RIPPLE_COLORS[Math.floor(Math.random() * RIPPLE_COLORS.length)];
+    const maxLife = durationFrames + i * 60;
+    ripples.push({
+      cx, cy,
+      radius: 0,
+      speed: speedPerFrame * (0.9 + Math.random() * 0.2),
+      life: maxLife,
+      maxLife,
+      color
+    });
+  }
+}
+
+// ── 夜空へ昇る星（爆発直後に生成・9色ローテーション・光沢） ──
+function spawnAscendingStars(cx, cy, colorIndex) {
+  const idx = (colorIndex != null ? colorIndex : 0) % STAR_COLORS.length;
+  const baseColor = STAR_COLORS[idx];
+  const count = 14 + Math.floor(Math.random() * 10);
+  for (let i = 0; i < count; i++) {
+    const color = baseColor;
+    const speed = 0.5 + Math.random() * 0.9;
+    const maxLife = 180 + Math.random() * 120;
+    ascendingStars.push({
+      x: cx + (Math.random() - 0.5) * 80,
+      y: cy,
+      vx: (Math.random() - 0.5) * 0.2,
+      vy: -speed,
+      size: 1.5 + Math.random() * 2.5,
+      life: maxLife,
+      maxLife,
+      initialAlpha: 0.6 + Math.random() * 0.4,
+      color,
+      wobble: 0.8 + Math.random() * 1.5,
+      phase: Math.random() * Math.PI * 2
+    });
+  }
+}
+
+// ── AI RELEASE ──
+async function release() {
+  let bgIndex = (parseInt(document.body.dataset.bg || '0') % 10) + 1;
+  document.body.dataset.bg = bgIndex;
+  document.body.style.backgroundImage = `url('./images/bg${bgIndex}.png')`;
+  document.body.style.backgroundSize = 'cover';
+  document.body.style.backgroundPosition = 'center';
+  document.body.style.transition = 'background-image 0.8s ease';
+
+  const txt = document.getElementById('input').value.trim();
+  if (!txt) return;
+
+  const inputEl = document.getElementById('input');
+  const inputRect = inputEl.getBoundingClientRect();
+  const inputCx = inputRect.left + inputRect.width / 2;
+  const inputCy = inputRect.top + inputRect.height / 2;
+
+  document.body.classList.add('post-release');
+
+  const releaseColorIndex = starMessageIndex;
+
+  moveInputRow();
+  spawnDomBurst(txt || '…', inputCx, inputCy);
+  spawnLightParticles(inputCx, inputCy, releaseColorIndex);
+  spawnAscendingStars(inputCx, inputCy, releaseColorIndex);
+
+  purificationBrightness = Math.min(0.4, purificationBrightness + 0.08);
+
+  setTimeout(() => {
+    const rippleCx = W * 0.15 + Math.random() * W * 0.7;
+    const rippleCy = H * 0.15 + Math.random() * H * 0.7;
+    spawnRipples(rippleCx, rippleCy);
+  }, 7200);
+
+  const aiText = document.getElementById('aiText');
+  const dots = document.getElementById('dots');
+
+  aiText.classList.remove('show');
+  aiText.textContent = '';
+  dots.classList.add('show');
+
+  const emotion = '感情';
+  const prompt = `
+ユーザーが「${emotion}」という感情を吐き出した。入力: 「${txt || '（言葉にならない）'}」
+
+あなたは詩人であり、宇宙の声。
+このユーザーへ、15〜30文字の日本語で、感情を受け止め、かつ解放を促す一言を返してください。
+米津玄師の歌詞のような、孤独と再生の美しさを持つ言葉で。
+余計な説明不要。一言だけ。
+  `.trim();
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 100,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const data = await res.json();
+    const reply = data.content?.[0]?.text?.trim() || '全部、ここに置いていけ。';
+    dots.classList.remove('show');
+    aiText.textContent = reply;
+    aiText.classList.add('show');
+  } catch(e) {
+    dots.classList.remove('show');
+    aiText.textContent = 'その痛みは、星になる。';
+    aiText.classList.add('show');
+  }
+
+  document.getElementById('input').value = '';
+}
+
+document.getElementById('input').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    release();
+  }
+});
+
+// 文字入力ごとにreleaseボタンの形と色を変更（10パターンでループ）
+const BTN_STYLES = [
+  { cls: 'style-1', mark: '△' },
+  { cls: 'style-2', mark: '♡' },
+  { cls: 'style-3', mark: '♤' },
+  { cls: 'style-4', mark: '♧' },
+  { cls: 'style-5', mark: '♦' },
+  { cls: 'style-6', mark: '★' },
+  { cls: 'style-7', mark: '🪽', img: 'hane.png', alt: '羽' },
+  { cls: 'style-8', img: 'kaleidoscope.png', alt: '万華鏡' },
+  { cls: 'style-9', img: 'diamond.png', alt: 'ダイヤ' },
+  { cls: 'style-10', img: 'waves.png', alt: '波と水玉' }
+];
+let btnStyleIndex = 0;
+document.getElementById('input').addEventListener('input', () => {
+  btnStyleIndex = (btnStyleIndex + 1) % 10;
+  const btn = document.getElementById('releaseBtn');
+  const mark = btn.querySelector('.btn-mark');
+  BTN_STYLES.forEach(s => btn.classList.remove(s.cls));
+  btn.classList.add(BTN_STYLES[btnStyleIndex].cls);
+  const s = BTN_STYLES[btnStyleIndex];
+  mark.replaceChildren();
+  if (s.img) {
+    const img = document.createElement('img');
+    img.src = s.img;
+    img.alt = s.alt || '';
+    mark.appendChild(img);
+  } else {
+    mark.textContent = s.mark;
+  }
+});
+
+// releaseボタン押下時の位置移動
+const INPUT_POSITIONS = ['pos-center', 'pos-top', 'pos-top-right', 'pos-top-left', 'pos-left', 'pos-right', 'pos-bottom-left', 'pos-bottom-right', 'pos-bottom', 'pos-mid-left', 'pos-mid-right'];
+let inputPosIndex = 0;
+function moveInputRow() {
+  const row = document.getElementById('inputRow');
+  INPUT_POSITIONS.forEach(p => row.classList.remove(p));
+  inputPosIndex = (inputPosIndex + 1) % INPUT_POSITIONS.length;
+  row.classList.add(INPUT_POSITIONS[inputPosIndex]);
+}
+
+// タップで映像表示
+function openVideo() {
+  const overlay = document.getElementById('videoOverlay');
+  const video = document.getElementById('mainVideo');
+  if (overlay && video) {
+    overlay.classList.add('show');
+    if (video.src) video.play();
+  }
+}
+function closeVideo() {
+  const overlay = document.getElementById('videoOverlay');
+  const video = document.getElementById('mainVideo');
+  if (overlay && video) {
+    overlay.classList.remove('show');
+    video.pause();
+  }
+}
+
+// ── タップで波紋＋音声（画面どこでも・スマホ対応） ──
+let lastHealingTap = 0;
+function onHealingTap(e) {
+  const now = Date.now();
+  if (now - lastHealingTap < 400) return;
+  lastHealingTap = now;
+
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  spawnRipples(clientX, clientY);
+
+  const audio = document.getElementById('messageAudio');
+  audio.pause();
+  audio.currentTime = 0;
+  audio.src = `${HEALING_AUDIO_FILES[Math.floor(Math.random() * HEALING_AUDIO_FILES.length)]}`;
+  audio.play().catch(() => {});
+}
+
+const zone = document.getElementById('tapHealingZone');
+zone.addEventListener('touchstart', onHealingTap, { passive: true });
+zone.addEventListener('click', onHealingTap);
+</script>
+</body>
+</html>
