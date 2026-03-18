@@ -184,6 +184,13 @@
   }
   .fire-btn .btn-mark { font-size: 1.6em; display: inline-flex; align-items: center; justify-content: center; }
   .fire-btn .btn-mark img { width: 1.2em; height: 1.2em; object-fit: contain; }
+  .fire-btn.style-7 .btn-mark img,
+  .fire-btn.style-8 .btn-mark img,
+  .fire-btn.style-9 .btn-mark img,
+  .fire-btn.style-10 .btn-mark img {
+    object-fit: cover;
+    object-position: top center;
+  }
   .fire-btn:hover { transform: scale(1.04); }
   .fire-btn:active { transform: scale(0.97); }
   .fire-btn.style-1 { background: #7c3aed; color: #fff; clip-path: polygon(50% 0%, 100% 100%, 0 100%); }
@@ -296,7 +303,7 @@
   .burst-char {
     position: fixed;
     font-family: 'Zen Kurenaido', sans-serif;
-    font-size: 5rem;
+    font-size: 2.5rem;
     font-weight: bold;
     color: var(--text);
     white-space: nowrap;
@@ -425,7 +432,7 @@ const RIPPLE_COLORS = ['rgba(255,255,255,0.08)', 'rgba(200,180,255,0.06)', 'rgba
 let ripples = [];
 
 // タップ用音声ファイル（ランダム再生）
-const HEALING_AUDIO_FILES = ['assets/forget.m4a', 'identity.m4a', 'sleepless.m4a', 'siawase.m4a', 'irritation.m4a', 'sky.m4a', 'breath.m4a', 'rest.m4a', 'cry.m4a', 'dream.m4a', 'oyasumi.m4a'];
+const HEALING_AUDIO_FILES = ['assets/forget.m4a', 'assets/identity.m4a', 'assets/sleepless.m4a', 'assets/siawase.m4a', 'assets/irritation.m4a', 'assets/sky.m4a', 'assets/breath.m4a', 'assets/rest.m4a', 'assets/cry.m4a', 'assets/dream.m4a', 'assets/oyasumi.m4a'];
 
 let starMessageIndex = 0;
 
@@ -756,10 +763,10 @@ const BTN_STYLES = [
   { cls: 'style-4', mark: '♧' },
   { cls: 'style-5', mark: '♦' },
   { cls: 'style-6', mark: '★' },
-  { cls: 'style-7', mark: '🪽', img: 'hane.png', alt: '羽' },
-  { cls: 'style-8', img: 'kaleidoscope.png', alt: '万華鏡' },
-  { cls: 'style-9', img: 'diamond.png', alt: 'ダイヤ' },
-  { cls: 'style-10', img: 'waves.png', alt: '波と水玉' }
+  { cls: 'style-7', mark: '', img: 'hane.png', alt: '羽' },
+  { cls: 'style-8', mark: '', img: 'kaleidoscope.png', alt: '万華鏡' },
+  { cls: 'style-9', mark: '', img: 'diamond.png', alt: 'ダイヤ' },
+  { cls: 'style-10', mark: '', img: 'waves.png', alt: '波と水玉' }
 ];
 let btnStyleIndex = 0;
 document.getElementById('input').addEventListener('input', () => {
