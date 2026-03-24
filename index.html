@@ -777,14 +777,15 @@ document.getElementById('input').addEventListener('input', () => {
   btn.classList.add(BTN_STYLES[btnStyleIndex].cls);
   const s = BTN_STYLES[btnStyleIndex];
   mark.replaceChildren();
-  if (s.img) {
-    const img = document.createElement('img');
-    img.src = s.img;
-    img.alt = s.alt || '';
-    mark.appendChild(img);
-  } else {
-    mark.textContent = s.mark;
-  }
+  const s = BTN_STYLES[btnStyleIndex];
+if (s.img) {
+  const img = document.createElement('img');
+  img.src = 'assets/' + s.img;
+  img.alt = s.alt || '';
+  mark.replaceChildren(img);
+} else {
+  mark.replaceChildren(document.createTextNode(s.mark));
+}
 });
 
 // releaseボタン押下時の位置移動
