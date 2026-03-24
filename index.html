@@ -648,3 +648,47 @@ function spawnRipples(cx, cy) {
   }
 }
 
+// ── AI RELEASE ──
+async function release() {
+  let bgIndex = (parseInt(document.body.dataset.bg || '0') % 10) + 1;
+  document.body.dataset.bg = bgIndex;
+  document.body.style.backgroundImage = `url('./images/bg${bgIndex}.png')`;
+  document.body.style.backgroundSize = 'cover';
+  document.body.style.backgroundPosition = 'center';
+  document.body.style.transition = 'background-image 0.8s ease';
+
+  const txt = document.getElementById('input').value.trim();
+  if (!txt) return;
+
+  const inputEl = document.getElementById('input');
+  const inputRect = inputEl.getBoundingClientRect();
+  const inputCx = inputRect.left + inputRect.width / 2;
+  const inputCy = inputRect.top + inputRect.height / 2;
+
+  document.body.classList.add('post-release');
+
+  const releaseColorIndex = starMessageIndex;
+
+  moveInputRow();
+  spawnDomBurst(txt || '…', inputCx, inputCy);
+  spawnLightParticles(inputCx, inputCy, releaseColorIndex);
+  spawnAscendingStars(inputCx, inputCy, releaseColorIndex);
+
+  purificationBrightness = Math.min(0.4, purificationBrightness + 0.08);
+
+  setTimeout(() => {
+    const rippleCx = W * 0.15 + Math.random() * W * 0.7;
+    const rippleCy = H * 0.15 + Math.random() * H * 0.7;
+    spawnRipples(rippleCx, rippleCy);
+  }, 7200);
+
+  const aiText = document.getElementById('aiText');
+  const dots = document.getElementById('dots');
+
+  aiText.classList.remove('show');
+  aiText.textContent = '';
+  dots.classList.add('show');
+
+  const emotion = '感情';
+  const prompt = `
+ユーザーが「${emotion}」という感情を吐き出した。入力: 「${txt || '（言葉にならない）'}」
