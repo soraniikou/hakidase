@@ -692,3 +692,121 @@ async function release() {
   const emotion = '感情';
   const prompt = `
 ユーザーが「${emotion}」という感情を吐き出した。入力: 「${txt || '（言葉にならない）'}」
+あなたは詩人であり、宇宙の声。
+このユーザーへ、15〜30文字の日本語で、感情を受け止め、かつ解放を促す一言を返してください。
+米津玄師の歌詞のような、孤独と再生の美しさを持つ言葉で。
+余計な説明不要。一言だけ。
+  `.trim();
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 100,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const data = await res.json();
+    const reply = data.content?.[0]?.text?.trim() || '全部、ここに置いていけ。';
+    dots.classList.remove('show');
+    aiText.textContent = reply;
+    aiText.classList.add('show');
+  } catch(e) {
+    dots.classList.remove('show');
+    aiText.textContent = 'その痛みは、星になる。';
+    aiText.classList.add('show');
+  }
+
+  document.getElementById('input').value = '';
+}
+
+document.getElementById('input').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    release();
+  }
+});
+
+// 文字入力ごとにreleaseボタンの形と色を変更（10パターンでループ）
+const BTN_STYLES = [
+  { cls: 'style-1', mark: '△' },
+  { cls: 'style-2', mark: '♡' },
+  { cls: 'style-3', mark: '♤' },
+  { cls: 'style-4', mark: '♧' },
+  { cls: 'style-5', mark: '♦' },
+  { cls: 'style-6', mark: '★' },
+  { cls: 'style-7', mark: '', img: 'hane.png', alt: '羽' },
+  { cls: 'style-8', mark: '', img: 'kaleidoscope.png', alt: '万華鏡' },
+  { cls: 'style-9', mark: '', img: 'diamond.png', alt: 'ダイヤ' },
+  { cls: 'style-10', mark: '', img: 'waves.png', alt: '波と水玉' }
+];
+let btnStyleIndex = 0;
+document.getElementById('input').addEventListener('input', () => {
+  btnStyleIndex = (btnStyleIndex + 1) % 10;
+  const btn = document.getElementById('releaseBtn');
+  const mark = btn.querySelector('.btn-mark');
+  BTN_STYLES.forEach(s => btn.classList.remove(s.cls));
+  btn.classList.add(BTN_STYLES[btnStyleIndex].cls);
+  const s = BTN_STYLES[btnStyleIndex];
+  mark.replaceChildren();
+  if (s.img) {
+    const img = document.createElement('img');
+    img.src = s.img;
+    img.alt = s.alt || '';
+    mark.appendChild(img);
+  } else {
+    mark.textContent = s.mark;
+  }
+});
+
+// releaseボタン押下時の位置移動
+const INPUT_POSITIONS = ['pos-center', 'pos-top', 'pos-top-right', 'pos-top-left', 'pos-left', 'pos-right', 'pos-bottom-left', 'pos-bottom-right', 'pos-bottom', 'pos-mid-left', 'pos-mid-right'];
+let inputPosIndex = 0;
+function moveInputRow() {
+  const row = document.getElementById('inputRow');
+  INPUT_POSITIONS.forEach(p => row.classList.remove(p));
+  inputPosIndex = (inputPosIndex + 1) % INPUT_POSITIONS.length;
+  row.classList.add(INPUT_POSITIONS[inputPosIndex]);
+}
+
+// タップで映像表示
+function openVideo() {
+  const overlay = document.getElementById('videoOverlay');
+  const video = document.getElementById('mainVideo');
+  if (overlay && video) {
+    overlay.classList.add('show');
+    if (video.src) video.play();
+  }
+}
+function closeVideo() {
+  const overlay = document.getElementById('videoOverlay');
+  const video = document.getElementById('mainVideo');
+  if (overlay && video) {
+    overlay.classList.remove('show');
+    video.pause();
+  }
+}
+
+// ── タップで波紋＋音声（画面どこでも・スマホ対応） ──
+let lastHealingTap = 0;
+function onHealingTap(e) {
+  const now = Date.now();
+  if (now - lastHealingTap < 400) return;
+  lastHealingTap = now;
+
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  spawnRipples(clientX, clientY);
+
+  const audio = document.getElementById('messageAudio');
+  audio.pause();
+  audio.currentTime = 0;
+  audio.src = `${HEALING_AUDIO_FILES[Math.floor(Math.random() * HEALING_AUDIO_FILES.length)]}`;
+  audio.play().catch(() => {});
+}
+
+const zone = document.getElementById('tapHealingZone');
+zone.addEventListener('touchstart', onHealingTap, { passive: true });
+zone.addEventListener('click', onHealingTap);
