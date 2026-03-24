@@ -786,6 +786,11 @@ if (s.img) {
 } else {
   mark.replaceChildren(document.createTextNode(s.mark));
 }
+// 「release」テキストの表示/非表示切り替え
+const btnLabel = btn.querySelector('.btn-label');
+if (btnLabel) {
+  btnLabel.style.display = s.img ? 'none' : '';
+}
 });
 
 // releaseボタン押下時の位置移動
